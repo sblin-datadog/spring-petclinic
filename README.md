@@ -6,6 +6,28 @@
 
 [See the presentation here](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
 
+### Build a docker image
+```
+docker build -t petclinic .
+```
+
+### Run locally with docker
+
+```
+docker run -p 8080:8080 petclinic
+```
+
+### Create a repository on dockerhub
+
+samuelblin/petclinic
+
+Get the tag for the local image using `docker images` and then associate a new tag to publish your new image:
+```
+tag 4500c01dde56 samuelblin/petclinic:v1
+```
+
+then push your image to docker hub
+
 ## Run Petclinic locally
 
 Spring Petclinic is a [Spring Boot](https://spring.io/guides/gs/spring-boot) application built using [Maven](https://spring.io/guides/gs/maven/) or [Gradle](https://spring.io/guides/gs/gradle/). You can build a jar file and run it from the command line (it should work just as well with Java 17 or newer):
