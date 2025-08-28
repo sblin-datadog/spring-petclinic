@@ -6,9 +6,17 @@
 
 [See the presentation here](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
 
-### Build a docker image
+
+### Create a repository on dockerhub
+
+samuelblin/petclinic
+
+### Build, tag and push the image
 ```
-docker build -t petclinic .
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t samuelblin/petclinic:1.0.0 \
+  --push .
 ```
 
 ### Run locally with docker
@@ -17,16 +25,7 @@ docker build -t petclinic .
 docker run -p 8080:8080 petclinic
 ```
 
-### Create a repository on dockerhub
 
-samuelblin/petclinic
-
-Get the tag for the local image using `docker images` and then associate a new tag to publish your new image:
-```
-tag 4500c01dde56 samuelblin/petclinic:v1
-```
-
-then push your image to docker hub
 
 ## Run Petclinic locally
 
