@@ -70,6 +70,12 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+    <!-- dogStatsD client -->
+    <groupId>com.datadoghq</groupId>
+      <artifactId>java-dogstatsd-client</artifactId>
+      <version>4.4.5</version>
+    </dependency>
 
     <!-- Databases - Uses H2 by default -->
     <dependency>
