@@ -13,7 +13,7 @@ import com.timgroup.statsd.StatsDClient;
 @Component
 public class CustomHeaderFilter extends OncePerRequestFilter {
 
-	private StatsDClient statsDClient;
+	private final StatsDClient statsDClient;
 
 	public CustomHeaderFilter(StatsDClient statsDClient) {
 		this.statsDClient = statsDClient;

@@ -14,6 +14,10 @@ public class MetricsConfig {
 		StatsDClient statsd = new NonBlockingStatsDClientBuilder().prefix("petclinic")
 			.hostname(System.getenv().getOrDefault("DD_AGENT_HOST", "localhost"))
 			.port(8125)
+			.errorHandler(e -> {
+				// Log and ignore all errors
+				System.err.println("Error sending statsd metric: " + e.getMessage());
+			})
 			.build();
 
 		return statsd;
