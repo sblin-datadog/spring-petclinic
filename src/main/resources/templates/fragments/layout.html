@@ -59,6 +59,12 @@
             <span th:text="#{error}">Error</span>
           </li>
 
+          <li
+            th:replace="~{::menuItem ('/springservice','springservice','call a k8s service','exclamation-triangle',#{error})}">
+            <span class="fa exclamation-triangle" aria-hidden="true"></span>
+            <span>k8s service</span>
+          </li>
+
         </ul>
       </div>
     </div>

@@ -14,9 +14,7 @@ samuelblin/petclinic
 ### Build, tag and push the image
 ```
 
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t samuelblin/petclinic:1.0.0 \
-  --push .
+docker buildx build --platform linux/amd64 -t samuelblin/petclinic:1.0.XX .
 ```
 
 ### Run locally with docker

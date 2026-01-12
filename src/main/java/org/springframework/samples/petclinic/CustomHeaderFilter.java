@@ -32,6 +32,9 @@ public class CustomHeaderFilter extends OncePerRequestFilter {
 		// Send histogram metrics to Datadog
 		this.statsDClient.histogram("custom.header.random.error.code", randomCode,
 				new String[] { "customErrorCode:" + randomCode });
+
+		System.out.println("Added custom 123ddrt/test/url/234/devices/ajkdjked678yjdnkf89879/test3");
+		System.out.println("code:" + randomCode);
 	}
 
 }

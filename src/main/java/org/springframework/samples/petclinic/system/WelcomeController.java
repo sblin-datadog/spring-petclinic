@@ -16,14 +16,19 @@
 
 package org.springframework.samples.petclinic.system;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 class WelcomeController {
 
+	private static final Logger logger = LogManager.getLogger(WelcomeController.class);
+
 	@GetMapping("/")
 	public String welcome() {
+		logger.info("Displaying welcome page");
 		return "welcome";
 	}
 

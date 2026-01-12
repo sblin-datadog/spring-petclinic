@@ -17,6 +17,8 @@ package org.springframework.samples.petclinic.vet;
 
 import java.util.List;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +37,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 class VetController {
 
+	private static final Logger logger = LogManager.getLogger(VetController.class);
+
 	private final VetRepository vetRepository;
 
 	public VetController(VetRepository vetRepository) {
@@ -43,11 +47,13 @@ class VetController {
 
 	@GetMapping("/vets.html")
 	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
+		logger.info("Displaying vet list page: {}", page);
 		// Here we are returning an object of type 'Vets' rather than a collection of Vet
 		// objects so it is simpler for Object-Xml mapping
 		Vets vets = new Vets();
 		Page<Vet> paginated = findPaginated(page);
 		vets.getVetList().addAll(paginated.toList());
+		logger.info("Found {} vets (total pages: {})", paginated.getTotalElements(), paginated.getTotalPages());
 		return addPaginationModel(page, paginated, model);
 	}
 
@@ -68,10 +74,12 @@ class VetController {
 
 	@GetMapping({ "/vets" })
 	public @ResponseBody Vets showResourcesVetList() {
+		logger.info("Fetching all vets as JSON");
 		// Here we are returning an object of type 'Vets' rather than a collection of Vet
 		// objects so it is simpler for JSon/Object mapping
 		Vets vets = new Vets();
 		vets.getVetList().addAll(this.vetRepository.findAll());
+		logger.info("Returning {} vets", vets.getVetList().size());
 		return vets;
 	}
 

@@ -18,6 +18,8 @@ package org.springframework.samples.petclinic.owner;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -40,6 +42,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  */
 @Controller
 class VisitController {
+
+	private static final Logger logger = LogManager.getLogger(VisitController.class);
 
 	private final OwnerRepository owners;
 
@@ -79,6 +83,7 @@ class VisitController {
 	// called
 	@GetMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String initNewVisitForm() {
+		logger.info("Displaying new visit form");
 		return "pets/createOrUpdateVisitForm";
 	}
 
@@ -87,12 +92,15 @@ class VisitController {
 	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
 			BindingResult result, RedirectAttributes redirectAttributes) {
+		logger.info("Processing new visit for pet id: {} (owner: {})", petId, owner.getId());
 		if (result.hasErrors()) {
+			logger.warn("Validation errors while creating visit: {}", result.getAllErrors());
 			return "pets/createOrUpdateVisitForm";
 		}
 
 		owner.addVisit(petId, visit);
 		this.owners.save(owner);
+		logger.info("Successfully booked visit for pet id: {} on {}", petId, visit.getDate());
 		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
 		return "redirect:/owners/{ownerId}";
 	}

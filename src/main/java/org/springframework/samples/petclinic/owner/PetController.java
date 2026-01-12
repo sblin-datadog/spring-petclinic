@@ -19,6 +19,8 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Optional;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.util.StringUtils;
@@ -43,6 +45,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/owners/{ownerId}")
 class PetController {
+
+	private static final Logger logger = LogManager.getLogger(PetController.class);
 
 	private static final String VIEWS_PETS_CREATE_OR_UPDATE_FORM = "pets/createOrUpdatePetForm";
 
@@ -94,7 +98,7 @@ class PetController {
 
 	@GetMapping("/pets/new")
 	public String initCreationForm(Owner owner, ModelMap model) {
-		System.out.println("Message from PetController#initCreationForm");
+		logger.info("Displaying pet creation form for owner: {} {}", owner.getFirstName(), owner.getLastName());
 		Pet pet = new Pet();
 		owner.addPet(pet);
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
@@ -103,6 +107,7 @@ class PetController {
 	@PostMapping("/pets/new")
 	public String processCreationForm(Owner owner, @Valid Pet pet, BindingResult result,
 			RedirectAttributes redirectAttributes) {
+		logger.info("Processing pet creation form for pet: {} (owner: {})", pet.getName(), owner.getId());
 
 		if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null)
 			result.rejectValue("name", "duplicate", "already exists");
@@ -113,23 +118,27 @@ class PetController {
 		}
 
 		if (result.hasErrors()) {
+			logger.warn("Validation errors while creating pet: {}", result.getAllErrors());
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 
 		owner.addPet(pet);
 		this.owners.save(owner);
+		logger.info("Successfully created new pet: {} for owner id: {}", pet.getName(), owner.getId());
 		redirectAttributes.addFlashAttribute("message", "New Pet has been Added");
 		return "redirect:/owners/{ownerId}";
 	}
 
 	@GetMapping("/pets/{petId}/edit")
 	public String initUpdateForm() {
+		logger.info("Displaying pet update form");
 		return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/pets/{petId}/edit")
 	public String processUpdateForm(Owner owner, @Valid Pet pet, BindingResult result,
 			RedirectAttributes redirectAttributes) {
+		logger.info("Processing update for pet id: {} (owner: {})", pet.getId(), owner.getId());
 
 		String petName = pet.getName();
 
@@ -147,10 +156,12 @@ class PetController {
 		}
 
 		if (result.hasErrors()) {
+			logger.warn("Validation errors while updating pet: {}", result.getAllErrors());
 			return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
 		}
 
 		updatePetDetails(owner, pet);
+		logger.info("Successfully updated pet: {} for owner id: {}", pet.getName(), owner.getId());
 		redirectAttributes.addFlashAttribute("message", "Pet details has been edited");
 		return "redirect:/owners/{ownerId}";
 	}
