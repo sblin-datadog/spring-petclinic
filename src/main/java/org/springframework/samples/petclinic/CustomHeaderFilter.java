@@ -10,10 +10,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.timgroup.statsd.StatsDClient;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 @Component
 public class CustomHeaderFilter extends OncePerRequestFilter {
 
 	private final StatsDClient statsDClient;
+
+	private static final Logger logger = LogManager.getLogger(CustomHeaderFilter.class);
 
 	public CustomHeaderFilter(StatsDClient statsDClient) {
 		this.statsDClient = statsDClient;
@@ -33,8 +38,8 @@ public class CustomHeaderFilter extends OncePerRequestFilter {
 		this.statsDClient.histogram("custom.header.random.error.code", randomCode,
 				new String[] { "customErrorCode:" + randomCode });
 
-		System.out.println("Added custom 123ddrt/test/url/234/devices/ajkdjked678yjdnkf89879/test3");
-		System.out.println("code:" + randomCode);
+		logger.info("Added custom 123ddrt/test/url/234/devices/ajkdjked678yjdnkf89879/test3");
+		logger.info("Random code added to log; code:" + randomCode);
 	}
 
 }

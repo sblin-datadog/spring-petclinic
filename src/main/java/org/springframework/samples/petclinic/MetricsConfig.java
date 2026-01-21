@@ -5,8 +5,13 @@ import org.springframework.context.annotation.Configuration;
 import com.timgroup.statsd.NonBlockingStatsDClientBuilder;
 import com.timgroup.statsd.StatsDClient;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 @Configuration
 public class MetricsConfig {
+
+	private static final Logger logger = LogManager.getLogger(MetricsConfig.class);
 
 	@Bean
 	public StatsDClient statsDClient() {
@@ -16,7 +21,7 @@ public class MetricsConfig {
 			.port(8125)
 			.errorHandler(e -> {
 				// Log and ignore all errors
-				System.err.println("Error sending statsd metric: " + e.getMessage());
+				logger.error("Error sending statsd metric: " + e.getMessage());
 			})
 			.build();
 

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="LOG_FILE_PATH">logs</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console Appender with JSON format -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <JsonLayout compact="true" eventEol="true" properties="true" stacktraceAsString="true">
+                <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd'T'HH:mm:ss.SSS'Z'}"/>
+                <KeyValuePair key="status" value="$${level:lowerCase=true}"/>
+                <KeyValuePair key="thread_name" value="$${threadName}"/>
+                <KeyValuePair key="logger_name" value="$${logger}"/>
+                <KeyValuePair key="service" value="$${env:DD_SERVICE:-petclinic}"/>
+                <KeyValuePair key="version" value="$${env:DD_VERSION:-unknown}"/>
+                <KeyValuePair key="env" value="$${env:DD_ENV:-dev}"/>
+                <KeyValuePair key="dd.trace_id" value="$${ctx:dd.trace_id}"/>
+                <KeyValuePair key="dd.span_id" value="$${ctx:dd.span_id}"/>
+            </JsonLayout>
+        </Console>
+
+        <!-- Rolling File Appender with JSON format -->
+        <RollingFile name="RollingFile" 
+                     fileName="${LOG_FILE_PATH}/petclinic.log"
+                     filePattern="${LOG_FILE_PATH}/petclinic-%d{yyyy-MM-dd}-%i.log.gz">
+            <JsonLayout compact="true" eventEol="true" properties="true" stacktraceAsString="true">
+                <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd'T'HH:mm:ss.SSS'Z'}"/>
+                <KeyValuePair key="status" value="$${level:lowerCase=true}"/>
+                <KeyValuePair key="thread_name" value="$${threadName}"/>
+                <KeyValuePair key="logger_name" value="$${logger}"/>
+                <KeyValuePair key="service" value="$${env:DD_SERVICE:-petclinic}"/>
+                <KeyValuePair key="version" value="$${env:DD_VERSION:-unknown}"/>
+                <KeyValuePair key="env" value="$${env:DD_ENV:-dev}"/>
+                <KeyValuePair key="dd.trace_id" value="$${ctx:dd.trace_id}"/>
+                <KeyValuePair key="dd.span_id" value="$${ctx:dd.span_id}"/>
+            </JsonLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Application Loggers -->
+        <Logger name="org.springframework.samples.petclinic" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <!-- Spring Framework Loggers -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Hibernate Loggers -->
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Root Logger -->
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+

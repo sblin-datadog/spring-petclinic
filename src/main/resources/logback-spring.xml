@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Properties -->
+    <property name="LOG_FILE_PATH" value="logs"/>
+    
+    <!-- Import Spring Boot default configuration -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Console Appender with JSON format -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Custom field names to match Datadog expectations -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <logger>logger.name</logger>
+                <thread>logger.thread_name</thread>
+                <level>status</level>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            
+            <!-- Add custom fields -->
+            <customFields>{"ddsource":"java"}</customFields>
+            
+            <!-- Include MDC (Mapped Diagnostic Context) for trace correlation -->
+            <includeMdcKeyName>dd.trace_id</includeMdcKeyName>
+            <includeMdcKeyName>dd.span_id</includeMdcKeyName>
+            <includeMdcKeyName>dd.service</includeMdcKeyName>
+            <includeMdcKeyName>dd.version</includeMdcKeyName>
+            <includeMdcKeyName>dd.env</includeMdcKeyName>
+            
+            <!-- Include caller data (optional, adds overhead) -->
+            <includeCallerData>false</includeCallerData>
+            
+            <!-- Include context name (application name) -->
+            <includeContext>false</includeContext>
+            
+            <!-- Timestamp format -->
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+            <timeZone>UTC</timeZone>
+            
+            <!-- Pretty print disabled - causes parsing issues in Datadog (multi-line JSON) -->
+            <!-- Enable only for local debugging if needed -->
+        </encoder>
+    </appender>
+    
+    <!-- Rolling File Appender with JSON format -->
+    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE_PATH}/petclinic.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_FILE_PATH}/petclinic-%d{yyyy-MM-dd}-%i.log.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>10</maxHistory>
+        </rollingPolicy>
+        
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <logger>logger.name</logger>
+                <thread>logger.thread_name</thread>
+                <level>status</level>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            
+            <customFields>{"ddsource":"java"}</customFields>
+            
+            <includeMdcKeyName>dd.trace_id</includeMdcKeyName>
+            <includeMdcKeyName>dd.span_id</includeMdcKeyName>
+            <includeMdcKeyName>dd.service</includeMdcKeyName>
+            <includeMdcKeyName>dd.version</includeMdcKeyName>
+            <includeMdcKeyName>dd.env</includeMdcKeyName>
+            
+            <includeCallerData>false</includeCallerData>
+            <includeContext>false</includeContext>
+            
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+            <timeZone>UTC</timeZone>
+        </encoder>
+    </appender>
+    
+    <!-- Async wrapper for better performance -->
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="CONSOLE_JSON"/>
+    </appender>
+    
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="FILE_JSON"/>
+    </appender>
+    
+    <!-- Application Loggers -->
+    <logger name="org.springframework.samples.petclinic" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+        <!-- File appender disabled by default - enable in specific profiles if needed -->
+        <!-- <appender-ref ref="ASYNC_FILE"/> -->
+    </logger>
+    
+    <!-- Spring Framework Loggers -->
+    <logger name="org.springframework" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </logger>
+    
+    <!-- Hibernate Loggers -->
+    <logger name="org.hibernate" level="WARN" additivity="false">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </logger>
+    
+    <!-- Root Logger -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </root>
+    
+    <!-- Spring Profile specific configurations -->
+    <springProfile name="dev">
+        <!-- Development: verbose logging + file appender -->
+        <logger name="org.springframework.samples.petclinic" level="DEBUG" additivity="false">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </logger>
+    </springProfile>
+    
+    <springProfile name="prod">
+        <!-- Production: less verbose, console only (no file to avoid duplicates) -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <!-- Console only for production - Datadog collects from stdout -->
+    </springProfile>
+</configuration>
+
