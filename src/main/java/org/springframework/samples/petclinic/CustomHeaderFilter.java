@@ -34,7 +34,7 @@ public class CustomHeaderFilter extends OncePerRequestFilter {
 		response.addHeader("x-custom-timestamp", Instant.now().toString());
 		filterChain.doFilter(request, response);
 
-		// Send histogram metrics to Datadog
+		// Send histogram metrics to Datadog - fix/fix-001
 		this.statsDClient.histogram("custom.header.random.error.code", randomCode,
 				new String[] { "customErrorCode:" + randomCode });
 
