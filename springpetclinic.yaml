@@ -53,8 +53,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.labels['tags.datadoghq.com/version']
+          - name: DD_PROFILING_ENABLED
+            value: "true"
           - name: DD_GIT_COMMIT_SHA
-            value: 6495497af0c9e51bdca0f3e69456c1013d818814
+            value: e8416d1b7de5202f5a3604ccff3fbfca11487adc
           - name: DD_GIT_REPOSITORY_URL
             value: https://github.com/sblin-datadog/spring-petclinic
           - name: DD_AGENT_HOST
