@@ -17,7 +17,7 @@ metadata:
   name: petclinic
   labels:
     app: petclinic
-    tags.datadoghq.com/version: "1.0.27"
+    tags.datadoghq.com/version: "1.0.28"
     tags.datadoghq.com/env: "dev"
     tags.datadoghq.com/service: "petclinic"
 spec:
@@ -29,7 +29,7 @@ spec:
     metadata:
       labels:
         app: petclinic
-        tags.datadoghq.com/version: "1.0.27"
+        tags.datadoghq.com/version: "1.0.28"
         tags.datadoghq.com/env: "dev"
         tags.datadoghq.com/service: "petclinic"
       annotations:
@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: spring-container
-          image: samuelblin/petclinic:1.0.27
+          image: samuelblin/petclinic:1.0.28
           ports:
             - containerPort: 8080
           env:
