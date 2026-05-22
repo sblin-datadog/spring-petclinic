@@ -1,9 +1,17 @@
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
-# Install netcat so we can send UDP packets for DogStatsD debugging
-RUN apt-get update && apt-get install -y netcat && rm -rf /var/lib/apt/lists/*
-COPY .mvn/ .mvn 
+COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
-RUN ./mvnw dependency:resolve
+RUN ./mvnw -B dependency:go-offline
 COPY src ./src
-CMD ["./mvnw", "spring-boot:run"]
+RUN ./mvnw -B package -DskipTests \
+ && cp target/spring-petclinic-*.jar app.jar
+
+FROM eclipse-temurin:21-jre-jammy
+WORKDIR /app
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends netcat-openbsd \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/app.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

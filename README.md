@@ -7,27 +7,52 @@
 [See the presentation here](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
 
 
-### Create a repository on dockerhub
+### Create a repository on Docker Hub
 
-samuelblin/petclinic
+`samuelblin/petclinic`
 
-### Build, tag and push the image
+### Build and push to Docker Hub with podman
+
+The `Dockerfile` is a multi-stage build that produces a single fat-jar and runs it directly (no `mvnw spring-boot:run` at container start).
+
+> ⚠️ The target K8s nodes typically run **linux/amd64**, but a Mac (Apple Silicon) builds **linux/arm64** by default. Always pin the platform explicitly, or publish a multi-arch manifest.
+
+#### One-shot: build amd64 only and push
+
+```bash
+podman machine start                                   # if not already running
+podman login docker.io
+podman build --platform linux/amd64 \
+  -t docker.io/samuelblin/petclinic:1.0.29 .
+podman push docker.io/samuelblin/petclinic:1.0.29
 ```
 
-docker buildx build --platform linux/amd64 -t samuelblin/petclinic:1.0.XX .
+#### Recommended: multi-arch manifest (amd64 + arm64)
+
+```bash
+podman manifest create samuelblin/petclinic:1.0.29
+podman build --platform linux/amd64,linux/arm64 \
+  --manifest samuelblin/petclinic:1.0.29 .
+podman manifest push --all \
+  samuelblin/petclinic:1.0.29 \
+  docker.io/samuelblin/petclinic:1.0.29
 ```
 
-### Run locally with docker
+Bump the version in `pom.xml`, `build.gradle`, and `springpetclinic.yaml` before tagging.
 
+### Run locally
+
+```bash
+podman run --rm -p 8080:8080 docker.io/samuelblin/petclinic:1.0.29
 ```
-docker run -p 8080:8080 petclinic
-```
+
+Then open <http://localhost:8080/>.
 
 
 
 ## Run Petclinic locally
 
-Spring Petclinic is a [Spring Boot](https://spring.io/guides/gs/spring-boot) application built using [Maven](https://spring.io/guides/gs/maven/) or [Gradle](https://spring.io/guides/gs/gradle/). You can build a jar file and run it from the command line (it should work just as well with Java 17 or newer):
+Spring Petclinic is a [Spring Boot](https://spring.io/guides/gs/spring-boot) application built using [Maven](https://spring.io/guides/gs/maven/) or [Gradle](https://spring.io/guides/gs/gradle/). You can build a jar file and run it from the command line (requires Java 21 or newer):
 
 ```bash
 git clone https://github.com/spring-projects/spring-petclinic.git
@@ -111,7 +136,7 @@ There is a `petclinic.css` in `src/main/resources/static/resources/css`. It was 
 
 The following items should be installed in your system:
 
-- Java 17 or newer (full JDK, not a JRE)
+- Java 21 or newer (full JDK, not a JRE)
 - [Git command line tool](https://help.github.com/articles/set-up-git)
 - Your preferred IDE
   - Eclipse with the m2e plugin. Note: when m2e is available, there is an m2 icon in `Help -> About` dialog. If m2e is

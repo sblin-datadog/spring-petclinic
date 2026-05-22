@@ -17,7 +17,7 @@ metadata:
   name: petclinic
   labels:
     app: petclinic
-    tags.datadoghq.com/version: "1.0.28"
+    tags.datadoghq.com/version: "1.0.29"
     tags.datadoghq.com/env: "dev"
     tags.datadoghq.com/service: "petclinic"
 spec:
@@ -29,7 +29,7 @@ spec:
     metadata:
       labels:
         app: petclinic
-        tags.datadoghq.com/version: "1.0.28"
+        tags.datadoghq.com/version: "1.0.29"
         tags.datadoghq.com/env: "dev"
         tags.datadoghq.com/service: "petclinic"
       annotations:
@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: spring-container
-          image: samuelblin/petclinic:1.0.28
+          image: samuelblin/petclinic:1.0.29
           ports:
             - containerPort: 8080
           env:
@@ -55,8 +55,10 @@ spec:
                 fieldPath: metadata.labels['tags.datadoghq.com/version']
           - name: DD_PROFILING_ENABLED
             value: "true"
+          - name: DD_LOGS_INJECTION
+            value: "true"
           - name: DD_GIT_COMMIT_SHA
-            value: 0b428c37b4fa64e2b55210fd7bc4cd28704f63a1
+            value: 8eede436c5950a7686aa539412447138c09a76d7
           - name: DD_GIT_REPOSITORY_URL
             value: https://github.com/sblin-datadog/spring-petclinic
           - name: DD_AGENT_HOST
