@@ -53,7 +53,7 @@ podman manifest create "$IMAGE" >/dev/null
 podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" --manifest "$IMAGE" .
 
 echo "==> Pushing $IMAGE"
-podman manifest push --all "$IMAGE" "docker://$IMAGE"
+podman manifest push --all --retry 5 --retry-delay 10s "$IMAGE" "docker://$IMAGE"
 
 echo "==> Deploying to $CONTEXT"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__GIT_SHA__/$GIT_SHA/g" "$MANIFEST" | kubectl apply -f -
