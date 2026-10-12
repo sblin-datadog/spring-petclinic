@@ -7,6 +7,7 @@ set -euo pipefail
 IMAGE_REPO="docker.io/samuelblin/petclinic"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 MANIFEST="springpetclinic.yaml"
+NAMESPACE="petclinic"
 DEPLOYMENT="petclinic"
 
 die() { echo "Error: $*" >&2; exit 1; }
@@ -36,14 +37,14 @@ TAGS="$(podman search --list-tags --limit 1000 "$IMAGE_REPO" | awk 'NR > 1 {prin
 
 # Check cluster access before the (long) build
 CONTEXT="$(kubectl config current-context)"
-kubectl auth can-i patch deployments >/dev/null 2>&1 \
+kubectl auth can-i patch deployments -n "$NAMESPACE" >/dev/null 2>&1 \
   || die "cannot deploy to context $CONTEXT (expired credentials? try gcloud auth login)"
-CURRENT="$(kubectl get deployment "$DEPLOYMENT" \
+CURRENT="$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" \
   -o jsonpath='{.metadata.labels.tags\.datadoghq\.com/version}' 2>/dev/null || true)"
 
 echo "Image:    $IMAGE ($PLATFORMS)"
 echo "Commit:   $GIT_SHA"
-echo "Context:  $CONTEXT (deployed version: ${CURRENT:-none})"
+echo "Context:  $CONTEXT, namespace $NAMESPACE (deployed version: ${CURRENT:-none})"
 read -r -p "Build, push and deploy? [y/N] " answer
 [[ "$answer" =~ ^[yY]$ ]] || die "aborted"
 
@@ -55,8 +56,15 @@ podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" --manifest "
 echo "==> Pushing $IMAGE"
 podman manifest push --all --retry 5 --retry-delay 10s "$IMAGE" "docker://$IMAGE"
 
-echo "==> Deploying to $CONTEXT"
+echo "==> Deploying to $CONTEXT/$NAMESPACE"
 sed -e "s/__VERSION__/$VERSION/g" -e "s/__GIT_SHA__/$GIT_SHA/g" "$MANIFEST" | kubectl apply -f -
-kubectl rollout status deployment/"$DEPLOYMENT" --timeout=5m
+kubectl rollout status deployment/"$DEPLOYMENT" -n "$NAMESPACE" --timeout=5m
 
 echo "==> $IMAGE deployed"
+LB_IP="$(kubectl get service petclinic-lb -n "$NAMESPACE" \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+if [ -n "$LB_IP" ]; then
+  echo "    http://$LB_IP:8181/"
+else
+  echo "    External IP pending: kubectl get service petclinic-lb -n $NAMESPACE --watch"
+fi

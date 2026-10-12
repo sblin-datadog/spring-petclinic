@@ -81,7 +81,17 @@ Then open <http://localhost:8080/>.
 
 ## Kubernetes and Datadog
 
-The manifest deploys the app behind a `LoadBalancer` on port `8181`. It does not include the Datadog tracer: it expects the Datadog Agent to be installed in the cluster (DaemonSet + Cluster Agent) with Single Step Instrumentation enabled for the target namespace. The Agent also collects the container logs (`ad.datadoghq.com/spring-container.logs` annotation) and receives the DogStatsD metrics.
+The manifest creates the `petclinic` namespace if it does not exist (no error if it does) and deploys the app in it.
+
+The front is exposed by the `petclinic-lb` service (`LoadBalancer`, port `8181` → container port `8080`) at `http://<EXTERNAL-IP>:8181/`. `deploy.sh` prints this URL at the end; otherwise get the IP with:
+
+```bash
+kubectl get service petclinic-lb -n petclinic
+```
+
+On a first deployment, `EXTERNAL-IP` stays `<pending>` for a minute or two while the cloud load balancer is created.
+
+The manifest does not include the Datadog tracer: it expects the Datadog Agent to be installed in the cluster (DaemonSet + Cluster Agent) with Single Step Instrumentation enabled for the target namespace. The Agent also collects the container logs (`ad.datadoghq.com/spring-container.logs` annotation) and receives the DogStatsD metrics.
 
 `DD_GIT_COMMIT_SHA` is replaced with the current commit at deploy time. For Datadog Source Code Integration to link traces and profiles to the code:
 
