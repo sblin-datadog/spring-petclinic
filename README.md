@@ -11,8 +11,8 @@ A fork of the [Spring PetClinic](https://github.com/spring-projects/spring-petcl
 
 ## Prerequisites
 
-- [podman](https://podman.io/) to build and run the image — nothing else is needed on the host.
-- A JDK 21 only for local development. Maven is provided by the `./mvnw` wrapper, no installation required.
+- [podman](https://podman.io/) to build the image — no JDK or Maven needed on the host, the build runs `./mvnw` inside the container.
+- `kubectl` configured for the target cluster.
 
 ## Build, push and deploy
 
@@ -65,19 +65,12 @@ podman manifest push --all \
 #### Deploy to Kubernetes
 
 ```bash
-sed -e "s/__VERSION__/$VERSION/g" -e "s/__GIT_SHA__/$(git rev-parse HEAD)/g" springpetclinic.yaml \
+sed -e "s/__VERSION__/${VERSION:?set VERSION first}/g" -e "s/__GIT_SHA__/$(git rev-parse HEAD)/g" springpetclinic.yaml \
   | kubectl apply -f -
+kubectl rollout status deployment/petclinic -n petclinic --timeout=5m
 ```
 
 Do not apply the file directly with `kubectl apply -f springpetclinic.yaml`: the placeholders would be sent as is.
-
-## Run locally with podman
-
-```bash
-podman run --rm -p 8080:8080 docker.io/samuelblin/petclinic:1.0.31
-```
-
-Then open <http://localhost:8080/>.
 
 ## Kubernetes and Datadog
 
@@ -98,64 +91,9 @@ The manifest does not include the Datadog tracer: it expects the Datadog Agent t
 - deploy from the commit the image was built from (working tree clean, `git status` empty);
 - push that commit to GitHub first (`DD_GIT_REPOSITORY_URL`).
 
-## Database configuration
+## Database
 
-In its default configuration, Petclinic uses an in-memory database (H2) which gets populated at startup with data. The h2 console is exposed at `http://localhost:8080/h2-console`, and it is possible to inspect the content of the database using the `jdbc:h2:mem:<uuid>` URL. The UUID is printed at startup to the console.
-
-A similar setup is provided for MySQL and PostgreSQL if a persistent database configuration is needed. Whenever the database type changes, the app needs to run with a different profile: `spring.profiles.active=mysql` for MySQL or `spring.profiles.active=postgres` for PostgreSQL (for example with `-e SPRING_PROFILES_ACTIVE=postgres` on `podman run`).
-
-Start MySQL or PostgreSQL locally with podman:
-
-```bash
-podman run -e MYSQL_USER=petclinic -e MYSQL_PASSWORD=petclinic -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=petclinic -p 3306:3306 mysql:9.2
-```
-
-or
-
-```bash
-podman run -e POSTGRES_USER=petclinic -e POSTGRES_PASSWORD=petclinic -e POSTGRES_DB=petclinic -p 5432:5432 postgres:17.5
-```
-
-You can also use the provided `docker-compose.yml` file. Each service is named after the Spring profile:
-
-```bash
-podman compose up mysql
-```
-
-or
-
-```bash
-podman compose up postgres
-```
-
-Further documentation is provided for [MySQL](src/main/resources/db/mysql/petclinic_db_setup_mysql.txt) and [PostgreSQL](src/main/resources/db/postgres/petclinic_db_setup_postgres.txt).
-
-## Local development (optional)
-
-Build and run the jar without a container (requires a JDK 21):
-
-```bash
-git clone https://github.com/sblin-datadog/spring-petclinic.git
-cd spring-petclinic
-./mvnw package
-java -jar target/*.jar
-```
-
-Or run it with the Spring Boot Maven plugin, which picks up changes to resources immediately (Java sources still need a compile, usually done by the IDE):
-
-```bash
-./mvnw spring-boot:run
-```
-
-To work in an IDE (IntelliJ IDEA, VS Code, Eclipse with m2e…), open the project through its [pom.xml](pom.xml) and run the `PetClinicApplication` main class.
-
-### Compiling the CSS
-
-`petclinic.css` in `src/main/resources/static/resources/css` is generated from `petclinic.scss` combined with [Bootstrap](https://getbootstrap.com/). If you change the `scss` or upgrade Bootstrap, recompile it with the Maven profile `css`:
-
-```bash
-./mvnw package -P css
-```
+The app uses its default in-memory H2 database, populated with sample data at startup: data is reset each time the pod restarts.
 
 ## License
 
