@@ -4,7 +4,8 @@ COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 RUN ./mvnw -B dependency:go-offline
 COPY src ./src
-RUN ./mvnw -B package -DskipTests \
+ARG VERSION=0.0.0-SNAPSHOT
+RUN ./mvnw -B package -DskipTests -Drevision=${VERSION} \
  && cp target/spring-petclinic-*.jar app.jar
 
 FROM eclipse-temurin:21-jre-jammy
