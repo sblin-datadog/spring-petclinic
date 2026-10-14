@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'security')}">
+
+<body>
+
+  <h2>Security Demo</h2>
+  <p>
+    Each button below sends a request that Datadog App &amp; API Protection is designed to detect.
+    Use it to generate signals for the <strong>petclinic</strong> service, then check
+    Security &gt; App and API Protection and Security &gt; Code Security.
+  </p>
+
+  <div th:if="${result}" class="alert alert-info" th:text="${result}">result</div>
+
+  <h3>Threat Management (WAF)</h3>
+  <p>These hit the existing owner search with an attack payload in the query string.</p>
+  <p>
+    <a class="btn btn-warning" href="/owners?lastName=%27%20OR%201%3D1--">SQL injection attempt</a>
+    <a class="btn btn-warning" href="/owners?lastName=%3Cscript%3Ealert(1)%3C%2Fscript%3E">XSS attempt</a>
+    <a class="btn btn-warning" href="/owners?lastName=..%2F..%2F..%2F..%2Fetc%2Fpasswd">Path traversal attempt</a>
+  </p>
+
+  <h3>Code Security (IAST)</h3>
+  <p>These run user input through a deliberately unsafe sink so IAST flags a vulnerability.</p>
+
+  <form th:action="@{/vuln/hash}" method="get" class="form-inline">
+    <label for="hashInput">Weak hash (MD5)&nbsp;</label>
+    <input class="form-control" id="hashInput" name="input" value="demo" size="20" />
+    <button type="submit" class="btn btn-danger">Hash it</button>
+  </form>
+
+  <br />
+
+  <form th:action="@{/vuln/sql}" method="get" class="form-inline">
+    <label for="sqlInput">SQL injection (raw query)&nbsp;</label>
+    <input class="form-control" id="sqlInput" name="lastName" value="Franklin" size="20" />
+    <button type="submit" class="btn btn-danger">Search owners</button>
+  </form>
+
+</body>
+
+</html>
