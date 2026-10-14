@@ -38,6 +38,19 @@
     <button type="submit" class="btn btn-danger">Search owners</button>
   </form>
 
+  <h3>Workload Protection (CWS)</h3>
+  <p>These run a shell command inside the container, which Datadog Workload Protection detects at runtime.</p>
+  <p>
+    <a class="btn btn-dark" href="/vuln/exec?cmd=id">Spawn shell (id)</a>
+    <a class="btn btn-dark" href="/vuln/exec?cmd=cat%20%2Fetc%2Fpasswd">Read /etc/passwd</a>
+    <a class="btn btn-dark" href="/vuln/exec?cmd=uname%20-a">Recon (uname -a)</a>
+  </p>
+  <form th:action="@{/vuln/exec}" method="get" class="form-inline">
+    <label for="cmdInput">Run command&nbsp;</label>
+    <input class="form-control" id="cmdInput" name="cmd" value="id" size="30" />
+    <button type="submit" class="btn btn-dark">Execute</button>
+  </form>
+
 </body>
 
 </html>

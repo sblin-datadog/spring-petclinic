@@ -15,10 +15,15 @@
  */
 package org.springframework.samples.petclinic.system;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -76,6 +81,34 @@ class SecurityDemoController {
 		String sql = "SELECT first_name, last_name FROM owners WHERE last_name = '" + lastName + "'";
 		List<?> rows = this.entityManager.createNativeQuery(sql).getResultList();
 		model.addAttribute("result", "Query returned " + rows.size() + " row(s) for: " + sql);
+		return "security-demo";
+	}
+
+	/**
+	 * Command injection sink: runs user input through a shell. Spawning {@code /bin/sh}
+	 * inside the container is what Datadog Workload Protection (CWS) detects at runtime;
+	 * the same flow is also a COMMAND_INJECTION sink for IAST.
+	 */
+	@GetMapping("/vuln/exec")
+	public String commandExec(@RequestParam(defaultValue = "id") String cmd, Model model) {
+		logger.info("Security demo: executing shell command: {}", cmd);
+		try {
+			Process process = new ProcessBuilder("/bin/sh", "-c", cmd).redirectErrorStream(true).start();
+			String output;
+			try (BufferedReader reader = new BufferedReader(
+					new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+				output = reader.lines().limit(200).collect(Collectors.joining("\n"));
+			}
+			process.waitFor();
+			model.addAttribute("result", "$ " + cmd + "\n" + output);
+		}
+		catch (IOException ex) {
+			model.addAttribute("result", "Command failed: " + ex.getMessage());
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
+			model.addAttribute("result", "Command interrupted: " + ex.getMessage());
+		}
 		return "security-demo";
 	}
 
