@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Build and push the standard Petclinic (no "Datadog" menu entry) to Docker Hub,
 # and with --k8s deploy it to the current Kubernetes context.
-# See deploy-dd.sh for the Datadog demo.
+# See deploy-dd.sh for the Datadog demo, deploy-postgres.sh and
+# deploy-dd-postgres.sh for the same variants on PostgreSQL.
 # Usage: ./deploy.sh [--k8s] <version>   e.g. ./deploy.sh 1.0.31, ./deploy.sh --k8s 1.0.31
 # Env:   PLATFORMS (default linux/amd64,linux/arm64)
 set -euo pipefail
 
-# IMAGE_REPO, DATADOG_DEMO and SCRIPT_NAME are set by deploy-dd.sh, do not set them by hand
+# IMAGE_REPO, DATADOG_DEMO, DATABASE and SCRIPT_NAME are set by the deploy-*.sh
+# wrappers, do not set them by hand
 IMAGE_REPO="${IMAGE_REPO:-docker.io/samuelblin/petclinic}"
 DATADOG_DEMO="${DATADOG_DEMO:-false}"
+DATABASE="${DATABASE:-h2}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 MANIFEST="springpetclinic.yaml"
+DB_MANIFEST="springpetclinic-postgres.yaml"
+DB_DEPLOYMENT="petclinic-db"
 NAMESPACE="petclinic"
 DEPLOYMENT="petclinic"
 
@@ -32,6 +37,11 @@ done
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must look like 1.0.31, got '$VERSION'"
 IMAGE="$IMAGE_REPO:$VERSION"
 [[ "$DATADOG_DEMO" =~ ^(true|false)$ ]] || die "DATADOG_DEMO must be true or false, got '$DATADOG_DEMO'"
+case "$DATABASE" in
+  h2) SPRING_PROFILE="" ;;
+  postgres) SPRING_PROFILE="postgres" ;;
+  *) die "DATABASE must be h2 or postgres, got '$DATABASE'" ;;
+esac
 
 cd "$(dirname "$0")"
 
@@ -68,6 +78,7 @@ fi
 
 echo "Image:    $IMAGE ($PLATFORMS)"
 echo "Datadog:  demo menu $([ "$DATADOG_DEMO" = true ] && echo enabled || echo disabled)"
+echo "Database: $DATABASE"
 echo "Commit:   $GIT_SHA"
 if [ "$K8S" = true ]; then
   echo "Context:  $CONTEXT, namespace $NAMESPACE (deployed version: ${CURRENT:-none})"
@@ -87,7 +98,8 @@ elif podman image exists "$IMAGE"; then
 fi
 podman manifest create "$IMAGE" >/dev/null
 podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
-  --build-arg DATADOG_DEMO="$DATADOG_DEMO" --manifest "$IMAGE" .
+  --build-arg DATADOG_DEMO="$DATADOG_DEMO" --build-arg SPRING_PROFILE="$SPRING_PROFILE" \
+  --manifest "$IMAGE" .
 
 echo "==> Pushing $IMAGE"
 podman manifest push --all --retry 5 --retry-delay 10s "$IMAGE" "docker://$IMAGE"
@@ -98,6 +110,11 @@ if [ "$K8S" = false ]; then
 fi
 
 echo "==> Deploying to $CONTEXT/$NAMESPACE"
+if [ "$DATABASE" = postgres ]; then
+  # Start the database first, otherwise the app fails to start and restarts
+  kubectl apply -f "$DB_MANIFEST"
+  kubectl rollout status deployment/"$DB_DEPLOYMENT" -n "$NAMESPACE" --timeout=5m
+fi
 sed -e "s|__IMAGE__|$IMAGE|g" -e "s/__GIT_SHA__/$GIT_SHA/g" -e "s/__VERSION__/$VERSION/g" "$MANIFEST" | kubectl apply -f -
 kubectl rollout status deployment/"$DEPLOYMENT" -n "$NAMESPACE" --timeout=5m
 

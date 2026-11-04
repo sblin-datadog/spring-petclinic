@@ -47,6 +47,12 @@ spec:
           image: __IMAGE__
           ports:
             - containerPort: 8080
+          # POSTGRES_URL/USER/PASS for the postgres variants (springpetclinic-postgres.yaml),
+          # ignored by the H2 variants
+          envFrom:
+          - secretRef:
+              name: petclinic-db
+              optional: true
           env:
           - name: DD_ENV
             valueFrom:

@@ -1,0 +1,80 @@
+# PostgreSQL for the postgres variants (deploy-postgres.sh, deploy-dd-postgres.sh).
+# Demo only: fixed credentials, no persistent volume (the schema and data are
+# recreated at app startup by spring.sql.init.mode=always).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: petclinic
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: petclinic-db
+  namespace: petclinic
+type: Opaque
+stringData:
+  # Read by the app (application-postgres.properties) through envFrom
+  POSTGRES_URL: "jdbc:postgresql://petclinic-db:5432/petclinic"
+  POSTGRES_USER: "petclinic"
+  POSTGRES_PASS: "petclinic"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: petclinic-db
+  namespace: petclinic
+spec:
+  selector:
+    app: petclinic-db
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: petclinic-db
+  namespace: petclinic
+  labels:
+    app: petclinic-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: petclinic-db
+  template:
+    metadata:
+      labels:
+        app: petclinic-db
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:17
+          ports:
+            - containerPort: 5432
+          env:
+          - name: POSTGRES_DB
+            value: petclinic
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: petclinic-db
+                key: POSTGRES_USER
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: petclinic-db
+                key: POSTGRES_PASS
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            periodSeconds: 5
+          volumeMounts:
+          - name: data
+            mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: data
+        emptyDir: {}

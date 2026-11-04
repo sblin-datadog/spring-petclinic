@@ -31,12 +31,16 @@ Set `petclinic.datadog-demo.enabled=false` to get the original application back:
 
 ## Build, push and deploy
 
-Two scripts, one per image:
+One script per image:
 
-| Script | Docker Hub repository | Datadog menu |
-|---|---|---|
-| `deploy.sh` | [`samuelblin/petclinic`](https://hub.docker.com/r/samuelblin/petclinic/tags) | hidden (standard Petclinic) |
-| `deploy-dd.sh` | [`samuelblin/petclinic-dd`](https://hub.docker.com/r/samuelblin/petclinic-dd/tags) | enabled (Datadog demo) |
+| Script | Docker Hub repository | Datadog menu | Database |
+|---|---|---|---|
+| `deploy.sh` | [`samuelblin/petclinic`](https://hub.docker.com/r/samuelblin/petclinic/tags) | hidden (standard Petclinic) | H2 |
+| `deploy-dd.sh` | [`samuelblin/petclinic-dd`](https://hub.docker.com/r/samuelblin/petclinic-dd/tags) | enabled (Datadog demo) | H2 |
+| `deploy-postgres.sh` | [`samuelblin/petclinic-postgres`](https://hub.docker.com/r/samuelblin/petclinic-postgres/tags) | hidden (standard Petclinic) | PostgreSQL |
+| `deploy-dd-postgres.sh` | [`samuelblin/petclinic-dd-postgres`](https://hub.docker.com/r/samuelblin/petclinic-dd-postgres/tags) | enabled (Datadog demo) | PostgreSQL |
+
+`deploy.sh` holds the logic, the other scripts only set the image, the Datadog menu and the database, and accept the same arguments.
 
 The version is not hardcoded anywhere: it is passed at build time (`pom.xml` uses `${revision}`, `springpetclinic.yaml` uses the `__IMAGE__`, `__VERSION__` and `__GIT_SHA__` placeholders). Check the tags already pushed to the repository and pick the next one.
 
@@ -47,16 +51,17 @@ By default the scripts stop once the image is pushed to Docker Hub. Add `--k8s` 
 ./deploy-dd.sh 1.0.31          # Datadog demo: build and push only
 ./deploy.sh --k8s 1.0.31       # standard: build, push and deploy to Kubernetes
 ./deploy-dd.sh --k8s 1.0.31    # Datadog demo: build, push and deploy to Kubernetes
+./deploy-dd-postgres.sh --k8s 1.0.31   # Datadog demo on PostgreSQL, with the database
 ```
 
-Both scripts deploy to the same `petclinic` deployment: the last one run with `--k8s` replaces the other in the cluster.
+All scripts deploy to the same `petclinic` deployment: the last one run with `--k8s` replaces the others in the cluster.
 
 The script:
 
 1. checks that the working tree is clean and the commit is pushed to GitHub (required by Datadog Source Code Integration, see below), that you are logged in to Docker Hub, that the tag does not exist yet in the repository and, with `--k8s`, that the current Kubernetes context is reachable;
-2. asks for confirmation, showing the image, whether the Datadog menu is enabled and, with `--k8s`, the target context and the version currently deployed;
+2. asks for confirmation, showing the image, whether the Datadog menu is enabled, the database and, with `--k8s`, the target context and the version currently deployed;
 3. builds a multi-arch image (`linux/amd64,linux/arm64`, override with `PLATFORMS=linux/amd64 ./deploy.sh 1.0.31`) and pushes it;
-4. with `--k8s` only: applies `springpetclinic.yaml` with the placeholders replaced, then waits for the rollout.
+4. with `--k8s` only: for the PostgreSQL variants, applies `springpetclinic-postgres.yaml` and waits for the database to be ready (so the app does not restart while it starts); then applies `springpetclinic.yaml` with the placeholders replaced and waits for the rollout.
 
 The `Dockerfile` is a multi-stage build that produces a single fat-jar and runs it directly (no `mvnw spring-boot:run` at container start). The final image only contains a Java 21 JRE and the prebuilt `app.jar`.
 
@@ -68,7 +73,7 @@ The `Dockerfile` is a multi-stage build that produces a single fat-jar and runs 
 VERSION=1.0.31
 ```
 
-The commands below build the standard image (`--build-arg DATADOG_DEMO=false`). For the Datadog demo image, drop this build arg and replace `samuelblin/petclinic` with `samuelblin/petclinic-dd`.
+The commands below build the standard image (`--build-arg DATADOG_DEMO=false`). For the Datadog demo image, drop this build arg and replace `samuelblin/petclinic` with `samuelblin/petclinic-dd`. For PostgreSQL, add `--build-arg SPRING_PROFILE=postgres` and use the `-postgres` repository.
 
 #### One-shot: build amd64 only and push
 
@@ -94,7 +99,9 @@ podman manifest push --all \
 #### Deploy to Kubernetes
 
 ```bash
-IMAGE=docker.io/samuelblin/petclinic:${VERSION:?set VERSION first}   # or petclinic-dd
+kubectl apply -f springpetclinic-postgres.yaml    # PostgreSQL variants only
+kubectl rollout status deployment/petclinic-db -n petclinic --timeout=5m
+IMAGE=docker.io/samuelblin/petclinic:${VERSION:?set VERSION first}   # or petclinic-dd, petclinic-postgres, petclinic-dd-postgres
 sed -e "s|__IMAGE__|$IMAGE|g" -e "s/__VERSION__/$VERSION/g" -e "s/__GIT_SHA__/$(git rev-parse HEAD)/g" springpetclinic.yaml \
   | kubectl apply -f -
 kubectl rollout status deployment/petclinic -n petclinic --timeout=5m
@@ -106,7 +113,7 @@ Do not apply the file directly with `kubectl apply -f springpetclinic.yaml`: the
 
 The manifest creates the `petclinic` namespace if it does not exist (no error if it does) and deploys the app in it.
 
-The front is exposed by the `petclinic-lb` service (`LoadBalancer`, port `8181` → container port `8080`) at `http://<EXTERNAL-IP>:8181/`. `deploy.sh --k8s` (or `deploy-dd.sh --k8s`) prints this URL at the end; otherwise get the IP with:
+The front is exposed by the `petclinic-lb` service (`LoadBalancer`, port `8181` → container port `8080`) at `http://<EXTERNAL-IP>:8181/`. the deploy scripts print this URL at the end with `--k8s`; otherwise get the IP with:
 
 ```bash
 kubectl get service petclinic-lb -n petclinic
@@ -123,7 +130,27 @@ The manifest does not include the Datadog tracer: it expects the Datadog Agent t
 
 ## Database
 
-The app uses its default in-memory H2 database, populated with sample data at startup: data is reset each time the pod restarts.
+The `deploy.sh` and `deploy-dd.sh` images use the default in-memory H2 database, populated with sample data at startup: data is reset each time the pod restarts.
+
+The `-postgres` images are built with `--build-arg SPRING_PROFILE=postgres` (env `SPRING_PROFILES_ACTIVE=postgres`, can be overridden at run time) and connect to PostgreSQL with `POSTGRES_URL`, `POSTGRES_USER` and `POSTGRES_PASS` (`application-postgres.properties`). In Kubernetes, `springpetclinic-postgres.yaml` deploys in the `petclinic` namespace:
+
+- a `petclinic-db` secret with these three variables, loaded by the app through `envFrom` (`optional`, so ignored by the H2 variants);
+- a `petclinic-db` deployment (`postgres:17`) and service (port `5432`).
+
+Demo only: the credentials are fixed and the database has no persistent volume, the schema and sample data are recreated when the app starts (`spring.sql.init.mode=always`), and the data is lost when the database pod restarts. Going back to an H2 variant leaves the database in place, remove it with `kubectl delete deployment,service,secret petclinic-db -n petclinic` (not `kubectl delete -f springpetclinic-postgres.yaml`: it would also delete the `petclinic` namespace, and the app with it).
+
+To run the PostgreSQL image locally with podman:
+
+```bash
+podman network create petclinic
+podman run -d --network petclinic --name petclinic-db \
+  -e POSTGRES_DB=petclinic -e POSTGRES_USER=petclinic -e POSTGRES_PASSWORD=petclinic postgres:17
+podman run --rm --network petclinic -p 8080:8080 \
+  -e POSTGRES_URL=jdbc:postgresql://petclinic-db:5432/petclinic \
+  docker.io/samuelblin/petclinic-postgres:$VERSION
+```
+
+The `k8s/db.yml` and `k8s/petclinic.yml` files come from upstream and are not used by the deploy scripts.
 
 ## License
 

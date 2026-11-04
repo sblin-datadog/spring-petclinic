@@ -18,5 +18,9 @@ COPY --from=build /app/app.jar app.jar
 # (can still be overridden at runtime with PETCLINIC_DATADOGDEMO_ENABLED)
 ARG DATADOG_DEMO=true
 ENV PETCLINIC_DATADOGDEMO_ENABLED=${DATADOG_DEMO}
+# Build with --build-arg SPRING_PROFILE=postgres to use PostgreSQL (POSTGRES_URL,
+# POSTGRES_USER, POSTGRES_PASS), empty keeps the embedded H2 database
+ARG SPRING_PROFILE=
+ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILE}
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
