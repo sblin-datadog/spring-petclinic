@@ -1,17 +1,30 @@
 <!DOCTYPE html>
 
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'security')}">
+<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'datadog')}">
 
 <body>
 
-  <h2>Security Demo</h2>
+  <h2>Datadog Demo</h2>
   <p>
-    Each button below sends a request that Datadog App &amp; API Protection is designed to detect.
-    Use it to generate signals for the <strong>petclinic</strong> service, then check
-    Security &gt; App and API Protection and Security &gt; Code Security.
+    Each button below sends a request that generates data for the <strong>petclinic</strong> service in Datadog.
   </p>
 
   <div th:if="${result}" class="alert alert-info" th:text="${result}">result</div>
+
+  <h2>Error</h2>
+  <p>
+    Calls another k8s service through <code>springservice.remote-url</code>: produces a distributed trace,
+    or an error when the remote service is not reachable. Check APM &gt; Traces and Error Tracking.
+  </p>
+  <p>
+    <a class="btn btn-danger" th:href="@{/springservice}" title="call a k8s service">Call the k8s service</a>
+  </p>
+
+  <h2>Security</h2>
+  <p>
+    These requests are designed to be detected by Datadog, check
+    Security &gt; App and API Protection, Security &gt; Code Security and Security &gt; Workload Protection.
+  </p>
 
   <h3>Threat Management (WAF)</h3>
   <p>These hit the existing owner search with an attack payload in the query string.</p>

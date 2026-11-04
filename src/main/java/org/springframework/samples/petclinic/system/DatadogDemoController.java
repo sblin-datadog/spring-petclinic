@@ -30,27 +30,32 @@ import jakarta.persistence.PersistenceContext;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Controller used to showcase Datadog App &amp; API Protection detections. The
- * {@code /vuln/*} endpoints are deliberately unsafe and exist only to generate security
- * signals for demos. Do not expose them in production.
+ * Controller behind the "Datadog" menu entry, used to showcase Datadog App &amp; API
+ * Protection detections. The {@code /vuln/*} endpoints are deliberately unsafe and exist
+ * only to generate security signals for demos. Do not expose them in production.
+ * <p/>
+ * Disabled, together with the menu entry, when {@code petclinic.datadog-demo.enabled} is
+ * {@code false}.
  */
 @Controller
-class SecurityDemoController {
+@ConditionalOnProperty(name = "petclinic.datadog-demo.enabled", havingValue = "true", matchIfMissing = true)
+class DatadogDemoController {
 
-	private static final Logger logger = LogManager.getLogger(SecurityDemoController.class);
+	private static final Logger logger = LogManager.getLogger(DatadogDemoController.class);
 
 	@PersistenceContext
 	private EntityManager entityManager;
 
-	@GetMapping("/security-demo")
-	public String securityDemo() {
-		return "security-demo";
+	@GetMapping("/datadog")
+	public String datadogDemo() {
+		return "datadog";
 	}
 
 	/**
@@ -68,7 +73,7 @@ class SecurityDemoController {
 		catch (NoSuchAlgorithmException ex) {
 			model.addAttribute("result", "MD5 not available: " + ex.getMessage());
 		}
-		return "security-demo";
+		return "datadog";
 	}
 
 	/**
@@ -81,7 +86,7 @@ class SecurityDemoController {
 		String sql = "SELECT first_name, last_name FROM owners WHERE last_name = '" + lastName + "'";
 		List<?> rows = this.entityManager.createNativeQuery(sql).getResultList();
 		model.addAttribute("result", "Query returned " + rows.size() + " row(s) for: " + sql);
-		return "security-demo";
+		return "datadog";
 	}
 
 	/**
@@ -109,7 +114,7 @@ class SecurityDemoController {
 			Thread.currentThread().interrupt();
 			model.addAttribute("result", "Command interrupted: " + ex.getMessage());
 		}
-		return "security-demo";
+		return "datadog";
 	}
 
 }

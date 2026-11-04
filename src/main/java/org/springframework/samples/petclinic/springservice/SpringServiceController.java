@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.springservice;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import reactor.core.publisher.Mono;
 import org.springframework.ui.Model;
 
 @Controller
+@ConditionalOnProperty(name = "petclinic.datadog-demo.enabled", havingValue = "true", matchIfMissing = true)
 class SpringServiceController {
 
 	private static final Logger logger = LogManager.getLogger(SpringServiceController.class);

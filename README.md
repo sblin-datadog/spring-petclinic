@@ -6,6 +6,14 @@ A fork of the [Spring PetClinic](https://github.com/spring-projects/spring-petcl
 - JSON logs with Log4j2 (`log4j-layout-template-json`) for log/trace correlation
 - Custom response headers `x-custom-random-error` and `x-custom-timestamp` to be used with `DD_TRACE_HEADER_TAGS` (`CustomHeaderFilter`)
 - Kubernetes manifest with unified service tagging (`env`, `service`, `version`)
+- A **Datadog** menu entry (`/datadog`) to trigger a distributed-trace error (`/springservice`) and security detections (App & API Protection, Code Security, Workload Protection)
+
+### Hiding the Datadog menu entry
+
+Set `petclinic.datadog-demo.enabled=false` to get the original application back (the upstream **Error** entry, `/oups`, is always kept): the menu entry is hidden and `/datadog`, `/vuln/*` and `/springservice` return 404. With the image:
+
+- at build time: `DATADOG_DEMO=false ./deploy.sh 1.0.33` (or `podman build --build-arg DATADOG_DEMO=false ...`);
+- at run time: set the env var `PETCLINIC_DATADOGDEMO_ENABLED=false` on the container.
 
 [Understanding the Spring Petclinic application with a few diagrams](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
 

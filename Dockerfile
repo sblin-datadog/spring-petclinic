@@ -14,5 +14,9 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends netcat-openbsd \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/app.jar app.jar
+# Build with --build-arg DATADOG_DEMO=false to hide the "Datadog" menu entry
+# (can still be overridden at runtime with PETCLINIC_DATADOGDEMO_ENABLED)
+ARG DATADOG_DEMO=true
+ENV PETCLINIC_DATADOGDEMO_ENABLED=${DATADOG_DEMO}
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

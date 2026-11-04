@@ -2,10 +2,12 @@
 # Build, push and deploy Petclinic to the current Kubernetes context.
 # Usage: ./deploy.sh <version>        e.g. ./deploy.sh 1.0.31
 # Env:   PLATFORMS (default linux/amd64,linux/arm64)
+#        DATADOG_DEMO (default true, false hides the "Datadog" menu entry)
 set -euo pipefail
 
 IMAGE_REPO="docker.io/samuelblin/petclinic"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
+DATADOG_DEMO="${DATADOG_DEMO:-true}"
 MANIFEST="springpetclinic.yaml"
 NAMESPACE="petclinic"
 DEPLOYMENT="petclinic"
@@ -16,6 +18,7 @@ die() { echo "Error: $*" >&2; exit 1; }
 VERSION="$1"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version must look like 1.0.31, got '$VERSION'"
 IMAGE="$IMAGE_REPO:$VERSION"
+[[ "$DATADOG_DEMO" =~ ^(true|false)$ ]] || die "DATADOG_DEMO must be true or false, got '$DATADOG_DEMO'"
 
 cd "$(dirname "$0")"
 
@@ -43,6 +46,7 @@ CURRENT="$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" \
   -o jsonpath='{.metadata.labels.tags\.datadoghq\.com/version}' 2>/dev/null || true)"
 
 echo "Image:    $IMAGE ($PLATFORMS)"
+echo "Datadog:  demo menu $([ "$DATADOG_DEMO" = true ] && echo enabled || echo disabled)"
 echo "Commit:   $GIT_SHA"
 echo "Context:  $CONTEXT, namespace $NAMESPACE (deployed version: ${CURRENT:-none})"
 read -r -p "Build, push and deploy? [y/N] " answer
@@ -51,7 +55,8 @@ read -r -p "Build, push and deploy? [y/N] " answer
 echo "==> Building $IMAGE"
 podman manifest rm "$IMAGE" >/dev/null 2>&1 || true
 podman manifest create "$IMAGE" >/dev/null
-podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" --manifest "$IMAGE" .
+podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
+  --build-arg DATADOG_DEMO="$DATADOG_DEMO" --manifest "$IMAGE" .
 
 echo "==> Pushing $IMAGE"
 podman manifest push --all --retry 5 --retry-delay 10s "$IMAGE" "docker://$IMAGE"
