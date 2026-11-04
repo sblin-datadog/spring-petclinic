@@ -79,7 +79,12 @@ fi
 [[ "$answer" =~ ^[yY]$ ]] || die "aborted"
 
 echo "==> Building $IMAGE"
-podman manifest rm "$IMAGE" >/dev/null 2>&1 || true
+# Drop any local manifest or image with this name (not on Docker Hub, checked above)
+if podman manifest exists "$IMAGE"; then
+  podman manifest rm "$IMAGE" >/dev/null
+elif podman image exists "$IMAGE"; then
+  podman rmi "$IMAGE" >/dev/null
+fi
 podman manifest create "$IMAGE" >/dev/null
 podman build --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
   --build-arg DATADOG_DEMO="$DATADOG_DEMO" --manifest "$IMAGE" .
