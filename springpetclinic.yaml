@@ -44,7 +44,7 @@ spec:
     spec:
       containers:
         - name: spring-container
-          image: docker.io/samuelblin/petclinic:__VERSION__
+          image: __IMAGE__
           ports:
             - containerPort: 8080
           env:

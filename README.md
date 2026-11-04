@@ -8,36 +8,55 @@ A fork of the [Spring PetClinic](https://github.com/spring-projects/spring-petcl
 - Kubernetes manifest with unified service tagging (`env`, `service`, `version`)
 - A **Datadog** menu entry (`/datadog`) to trigger a distributed-trace error (`/springservice`) and security detections (App & API Protection, Code Security, Workload Protection)
 
+[Understanding the Spring Petclinic application with a few diagrams](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
+
+## Datadog demo menu
+
+The **Datadog** menu entry opens `/datadog`, with two sections:
+
+- **Error**: calls another k8s service (`/springservice`, URL set by `springservice.remote-url`) to produce a distributed trace, or an error when the remote service is not reachable. The upstream **Error** entry (`/oups`, `RuntimeException`) stays in the top menu.
+- **Security**: attack payloads for App & API Protection (WAF), deliberately unsafe sinks for Code Security (IAST: weak hash, SQL injection, command injection) and shell commands in the container for Workload Protection. The `/vuln/*` endpoints are unsafe on purpose: never expose them outside a demo. `security-traffic.sh` sends the same WAF traffic with curl.
+
 ### Hiding the Datadog menu entry
 
-Set `petclinic.datadog-demo.enabled=false` to get the original application back (the upstream **Error** entry, `/oups`, is always kept): the menu entry is hidden and `/datadog`, `/vuln/*` and `/springservice` return 404. With the image:
+Set `petclinic.datadog-demo.enabled=false` to get the original application back: the menu entry is hidden and `/datadog`, `/vuln/*` and `/springservice` return 404 (`/oups` and its **Error** entry are kept). With the image:
 
-- at build time: `DATADOG_DEMO=false ./deploy.sh 1.0.33` (or `podman build --build-arg DATADOG_DEMO=false ...`);
-- at run time: set the env var `PETCLINIC_DATADOGDEMO_ENABLED=false` on the container.
-
-[Understanding the Spring Petclinic application with a few diagrams](https://speakerdeck.com/michaelisvy/spring-petclinic-sample-application)
+- at build time: `podman build --build-arg DATADOG_DEMO=false ...` (the default of the `Dockerfile` is `true`), this is what `deploy.sh` does;
+- at run time: set the env var `PETCLINIC_DATADOGDEMO_ENABLED=false` on the container, it overrides the build-time value.
 
 ## Prerequisites
 
 - [podman](https://podman.io/) to build the image — no JDK or Maven needed on the host, the build runs `./mvnw` inside the container.
-- `kubectl` configured for the target cluster.
+- `kubectl` configured for the target cluster, only to deploy to Kubernetes (`--k8s`).
 
 ## Build, push and deploy
 
-Docker Hub repository: `samuelblin/petclinic`
+Two scripts, one per image:
 
-The version is not hardcoded anywhere: it is passed at build time (`pom.xml` uses `${revision}`, `springpetclinic.yaml` uses the `__VERSION__` and `__GIT_SHA__` placeholders). Check the tags already pushed to [Docker Hub](https://hub.docker.com/r/samuelblin/petclinic/tags) and pick the next one:
+| Script | Docker Hub repository | Datadog menu |
+|---|---|---|
+| `deploy.sh` | [`samuelblin/petclinic`](https://hub.docker.com/r/samuelblin/petclinic/tags) | hidden (standard Petclinic) |
+| `deploy-dd.sh` | [`samuelblin/petclinic-dd`](https://hub.docker.com/r/samuelblin/petclinic-dd/tags) | enabled (Datadog demo) |
+
+The version is not hardcoded anywhere: it is passed at build time (`pom.xml` uses `${revision}`, `springpetclinic.yaml` uses the `__IMAGE__`, `__VERSION__` and `__GIT_SHA__` placeholders). Check the tags already pushed to the repository and pick the next one.
+
+By default the scripts stop once the image is pushed to Docker Hub. Add `--k8s` to also deploy it to the current Kubernetes context:
 
 ```bash
-./deploy.sh 1.0.31
+./deploy.sh 1.0.31             # standard: build and push only
+./deploy-dd.sh 1.0.31          # Datadog demo: build and push only
+./deploy.sh --k8s 1.0.31       # standard: build, push and deploy to Kubernetes
+./deploy-dd.sh --k8s 1.0.31    # Datadog demo: build, push and deploy to Kubernetes
 ```
+
+Both scripts deploy to the same `petclinic` deployment: the last one run with `--k8s` replaces the other in the cluster.
 
 The script:
 
-1. checks that the working tree is clean and the commit is pushed to GitHub (required by Datadog Source Code Integration, see below), that you are logged in to Docker Hub, that the tag does not exist yet and that the current Kubernetes context is reachable;
-2. asks for confirmation, showing the target context and the version currently deployed;
+1. checks that the working tree is clean and the commit is pushed to GitHub (required by Datadog Source Code Integration, see below), that you are logged in to Docker Hub, that the tag does not exist yet in the repository and, with `--k8s`, that the current Kubernetes context is reachable;
+2. asks for confirmation, showing the image, whether the Datadog menu is enabled and, with `--k8s`, the target context and the version currently deployed;
 3. builds a multi-arch image (`linux/amd64,linux/arm64`, override with `PLATFORMS=linux/amd64 ./deploy.sh 1.0.31`) and pushes it;
-4. applies `springpetclinic.yaml` with the placeholders replaced, then waits for the rollout.
+4. with `--k8s` only: applies `springpetclinic.yaml` with the placeholders replaced, then waits for the rollout.
 
 The `Dockerfile` is a multi-stage build that produces a single fat-jar and runs it directly (no `mvnw spring-boot:run` at container start). The final image only contains a Java 21 JRE and the prebuilt `app.jar`.
 
@@ -49,12 +68,14 @@ The `Dockerfile` is a multi-stage build that produces a single fat-jar and runs 
 VERSION=1.0.31
 ```
 
+The commands below build the standard image (`--build-arg DATADOG_DEMO=false`). For the Datadog demo image, drop this build arg and replace `samuelblin/petclinic` with `samuelblin/petclinic-dd`.
+
 #### One-shot: build amd64 only and push
 
 ```bash
 podman machine start                                   # if not already running
 podman login docker.io
-podman build --platform linux/amd64 --build-arg VERSION=$VERSION \
+podman build --platform linux/amd64 --build-arg VERSION=$VERSION --build-arg DATADOG_DEMO=false \
   -t docker.io/samuelblin/petclinic:$VERSION .
 podman push docker.io/samuelblin/petclinic:$VERSION
 ```
@@ -63,7 +84,7 @@ podman push docker.io/samuelblin/petclinic:$VERSION
 
 ```bash
 podman manifest create samuelblin/petclinic:$VERSION
-podman build --platform linux/amd64,linux/arm64 --build-arg VERSION=$VERSION \
+podman build --platform linux/amd64,linux/arm64 --build-arg VERSION=$VERSION --build-arg DATADOG_DEMO=false \
   --manifest samuelblin/petclinic:$VERSION .
 podman manifest push --all \
   samuelblin/petclinic:$VERSION \
@@ -73,7 +94,8 @@ podman manifest push --all \
 #### Deploy to Kubernetes
 
 ```bash
-sed -e "s/__VERSION__/${VERSION:?set VERSION first}/g" -e "s/__GIT_SHA__/$(git rev-parse HEAD)/g" springpetclinic.yaml \
+IMAGE=docker.io/samuelblin/petclinic:${VERSION:?set VERSION first}   # or petclinic-dd
+sed -e "s|__IMAGE__|$IMAGE|g" -e "s/__VERSION__/$VERSION/g" -e "s/__GIT_SHA__/$(git rev-parse HEAD)/g" springpetclinic.yaml \
   | kubectl apply -f -
 kubectl rollout status deployment/petclinic -n petclinic --timeout=5m
 ```
@@ -84,7 +106,7 @@ Do not apply the file directly with `kubectl apply -f springpetclinic.yaml`: the
 
 The manifest creates the `petclinic` namespace if it does not exist (no error if it does) and deploys the app in it.
 
-The front is exposed by the `petclinic-lb` service (`LoadBalancer`, port `8181` → container port `8080`) at `http://<EXTERNAL-IP>:8181/`. `deploy.sh` prints this URL at the end; otherwise get the IP with:
+The front is exposed by the `petclinic-lb` service (`LoadBalancer`, port `8181` → container port `8080`) at `http://<EXTERNAL-IP>:8181/`. `deploy.sh --k8s` (or `deploy-dd.sh --k8s`) prints this URL at the end; otherwise get the IP with:
 
 ```bash
 kubectl get service petclinic-lb -n petclinic
